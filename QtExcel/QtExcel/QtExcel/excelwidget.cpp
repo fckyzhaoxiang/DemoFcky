@@ -79,14 +79,35 @@ bool ExcelWidget::file_csv(const QString &path)
     else
         return false;
 
-    //保存文件
-#if 0
     QStringList str = data.at(1);
     QDateTime dateTime;
-    int second = dateTime.fromString(str.at(0),"yyyy/MM/dd hh:mm:ss").toTime_t();
-    //2020_6_17_1108225.csv
-    QString savePath = QDir::currentPath() + "/" + dateTime.fromTime_t(second).toString("yyyy_MM_dd_") + str.at(3) + ".csv";
-    qDebug() << savePath;
+    int TypeDate = 0;
+    int second = 0;
+    QString savePath;
+
+    //("2020/6/17 23:58:59", "001108", "0", "001108225", "40", "31.563", "123.170", "停止中", "追日表日期错误、定日表日期错误、追日预备表日期错误", "12", "5")
+    //"2020/6/17 23:58:59" "001108225"
+    qDebug() << data.at(1);
+    //通过解析数据判断 为何种格式 保存文件格式为2020_6_17_1108225.csv
+    if(dateTime.fromString(str.at(0),"yyyy/MM/dd hh:mm:ss").toTime_t() != -1)
+    {
+        //PC断导出数据格式
+        TypeDate = 1;
+        savePath = QDir::currentPath() + "/" + dateTime.fromTime_t(second).toString("yyyy_MM_dd_") + str.at(3) + ".csv";
+        qDebug() << savePath;
+
+    }else if(dateTime.fromString(str.at(1),"yyyy-MM-dd hh:mm:ss.zzz").toTime_t() != -1)
+    {
+        //数据库导出数据格式
+        TypeDate = 2;
+        savePath = QDir::currentPath() + "/" + dateTime.fromTime_t(second).toString("yyyy_MM_dd_") + str.at(4) + ".csv";
+        qDebug() << savePath;
+    }else
+    {
+        ui->textEdit->setText("解析数据格式不对");
+        return false;
+    }
+
     QFile saveFile(savePath);
     if(!saveFile.open(QIODevice::ReadWrite))
     {
@@ -96,73 +117,63 @@ bool ExcelWidget::file_csv(const QString &path)
     QTextStream saveStrem(&saveFile);
     QString formate = "行数,时间,行数,时间,差值：秒,马达控制器编码,\n";
     saveStrem << formate.toUtf8();
-#else
-    QStringList str = data.at(1);
-    QDateTime dateTime;
-    int second = dateTime.fromString(str.at(1),"yyyy-MM-dd hh:mm:ss.zzz").toTime_t();
-    //2020_6_17_1108225.csv
-    QString savePath = QDir::currentPath() + "/" + dateTime.fromTime_t(second).toString("yyyy_MM_dd_") + str.at(4) + ".csv";
-    qDebug() << savePath;
-    QFile saveFile(savePath);
-    if(!saveFile.open(QIODevice::ReadWrite))
-    {
-        qDebug() << "打开保存文件失败";
-        return false;
-    }
-    QTextStream saveStrem(&saveFile);
-    QString formate = "行数,时间,行数,时间,差值：秒,马达控制器编码,\n";
-    saveStrem << formate.toUtf8();
-#endif
+
     //读取数据比较2个数值 的时间差值
     QString strTextEdit;
+    int second1 = 0,second2 = 0,diffValue = 0;
     for(int i=1; i<data.size()-1;++i)
     {
         QStringList s1=data.at(i);
         QStringList s2=data.at(i+1);
         //QString str=s1.join(" ")+"!";
+        second1 = 0;
+        second2 = 0;
+        diffValue = 0;
+        switch(TypeDate){
+        case 1://PC短导出的数据分析
+            second1 = dateTime.fromString(s1.at(0),"yyyy/MM/dd hh:mm:ss").toTime_t();
+            second2 = dateTime.fromString(s2.at(0),"yyyy/MM/dd hh:mm:ss").toTime_t();
+            //qDebug() << "第" << i << "行" << s1.at(0) << "," << second1 << ",第" << i+1 << "行"<< s2.at(0) <<","<<second2;
+            //qDebug() <<s1;
+            diffValue = qAbs(second1-second2);
+            if(diffValue > ui->lineEdit->text().toInt()){
 
-#if 0 //直接在PC端导出的数据
-        int second1 = dateTime.fromString(s1.at(0),"yyyy/MM/dd hh:mm:ss").toTime_t();
-        int second2 = dateTime.fromString(s2.at(0),"yyyy/MM/dd hh:mm:ss").toTime_t();
-        //qDebug() << "第" << i << "行" << s1.at(0) << "," << second1 << ",第" << i+1 << "行"<< s2.at(0) <<","<<second2;
-        //qDebug() <<s1;
-        int diffValue = qAbs(second1-second2);
-        if(diffValue > ui->lineEdit->text().toInt()){
+                qDebug() << "第" << i << "行" << s1.at(0) << "," << second1 << ",第" << i+1 << "行"<< s2.at(0) <<","<<second2 <<" 马达控制器编码" <<s1.at(3);
+                qDebug() << "差值为："<<diffValue;
+                strTextEdit = "第" + QString::number(i) + "行 " + s1.at(0) + "," + QString::number(second1) +
+                    ",第" + QString::number(i+1) + "行 " + s2.at(0) + "," + QString::number(second2) + " 马达控制器编码" + s1.at(3);
+                ui->textEdit->append(strTextEdit);
+                strTextEdit = "差值为：" + QString::number(diffValue);
+                ui->textEdit->append(strTextEdit);
 
-            qDebug() << "第" << i << "行" << s1.at(0) << "," << second1 << ",第" << i+1 << "行"<< s2.at(0) <<","<<second2 <<" 马达控制器编码" <<s1.at(3);
-            qDebug() << "差值为："<<diffValue;
-            strTextEdit = "第" + QString::number(i) + "行 " + s1.at(0) + "," + QString::number(second1) +
-                ",第" + QString::number(i+1) + "行 " + s2.at(0) + "," + QString::number(second2) + " 马达控制器编码" + s1.at(3);
-            ui->textEdit->append(strTextEdit);
-            strTextEdit = "差值为：" + QString::number(diffValue);
-            ui->textEdit->append(strTextEdit);
+                //保存数据
+                saveStrem << QString::number(i) + "," << s1.at(0) + "," << QString::number(i+1) + "," << s2.at(0) + "," << QString::number(diffValue) + "," << s1.at(3) + "," << "\n";
+            }
+            break;
+        case 2://数据库导出的数据分析
+            second1 = dateTime.fromString(s1.at(1),"yyyy-MM-dd hh:mm:ss.zzz").toTime_t();
+            second2 = dateTime.fromString(s2.at(1),"yyyy-MM-dd hh:mm:ss.zzz").toTime_t();
+            //qDebug() << "第" << i << "行" << s1.at(1) << "," << second1 << ",第" << i+1 << "行"<< s2.at(1) <<","<<second2;
+            //qDebug() <<s1;
+            diffValue = qAbs(second1-second2);
+            qDebug() << ui->lineEdit->text().toUInt();
+            if(diffValue >= ui->lineEdit->text().toInt()){
 
-            //保存数据
-            saveStrem << QString::number(i) + "," << s1.at(0) + "," << QString::number(i+1) + "," << s2.at(0) + "," << QString::number(diffValue) + "," << s1.at(3) + "," << "\n";
+                qDebug() << "第" << i << "行" << s1.at(1) << "," << second1 << ",第" << i+1 << "行"<< s2.at(1) <<","<<second2 <<" 马达控制器编码" <<s1.at(4);
+                qDebug() << "差值为："<<diffValue;
+                strTextEdit = "第" + QString::number(i) + "行 " + s1.at(1) + "," + QString::number(second1) +
+                    ",第" + QString::number(i+1) + "行 " + s2.at(1) + "," + QString::number(second2) + " 马达控制器编码" + s1.at(4);
+                ui->textEdit->append(strTextEdit);
+                strTextEdit = "差值为：" + QString::number(diffValue);
+                ui->textEdit->append(strTextEdit);
+
+                //保存数据
+                saveStrem << QString::number(i) + "," << s1.at(1) + "," << QString::number(i+1) + "," << s2.at(1) + ","
+                        << QString::number(diffValue) + "," << s1.at(4) + "," << "\n";
+
+            }
+            break;
         }
-#else   //数据库导出的数据
-        int second1 = dateTime.fromString(s1.at(1),"yyyy-MM-dd hh:mm:ss.zzz").toTime_t();
-        int second2 = dateTime.fromString(s2.at(1),"yyyy-MM-dd hh:mm:ss.zzz").toTime_t();
-        //qDebug() << "第" << i << "行" << s1.at(1) << "," << second1 << ",第" << i+1 << "行"<< s2.at(1) <<","<<second2;
-        //qDebug() <<s1;
-        int diffValue = qAbs(second1-second2);
-        qDebug() << ui->lineEdit->text().toUInt();
-        if(diffValue >= ui->lineEdit->text().toInt()){
-
-            qDebug() << "第" << i << "行" << s1.at(1) << "," << second1 << ",第" << i+1 << "行"<< s2.at(1) <<","<<second2 <<" 马达控制器编码" <<s1.at(4);
-            qDebug() << "差值为："<<diffValue;
-            strTextEdit = "第" + QString::number(i) + "行 " + s1.at(1) + "," + QString::number(second1) +
-                ",第" + QString::number(i+1) + "行 " + s2.at(1) + "," + QString::number(second2) + " 马达控制器编码" + s1.at(4);
-            ui->textEdit->append(strTextEdit);
-            strTextEdit = "差值为：" + QString::number(diffValue);
-            ui->textEdit->append(strTextEdit);
-
-            //保存数据
-            saveStrem << QString::number(i) + "," << s1.at(1) + "," << QString::number(i+1) + "," << s2.at(1) + ","
-                      << QString::number(diffValue) + "," << s1.at(4) + "," << "\n";
-
-        }
-#endif
     }
     file.close();
     saveFile.close();
