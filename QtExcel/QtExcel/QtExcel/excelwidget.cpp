@@ -89,14 +89,14 @@ bool ExcelWidget::file_csv(const QString &path)
     //"2020/6/17 23:58:59" "001108225"
     qDebug() << data.at(1);
     //通过解析数据判断 为何种格式 保存文件格式为2020_6_17_1108225.csv
-    if(dateTime.fromString(str.at(0),"yyyy/MM/dd hh:mm:ss").toTime_t() != -1)
+    if((second = dateTime.fromString(str.at(0),"yyyy/MM/dd hh:mm:ss").toTime_t() )!= -1)
     {
         //PC断导出数据格式
         TypeDate = 1;
         savePath = QDir::currentPath() + "/" + dateTime.fromTime_t(second).toString("yyyy_MM_dd_") + str.at(3) + ".csv";
         qDebug() << savePath;
 
-    }else if(dateTime.fromString(str.at(1),"yyyy-MM-dd hh:mm:ss.zzz").toTime_t() != -1)
+    }else if((second = dateTime.fromString(str.at(1),"yyyy-MM-dd hh:mm:ss.zzz").toTime_t() )!= -1)
     {
         //数据库导出数据格式
         TypeDate = 2;
