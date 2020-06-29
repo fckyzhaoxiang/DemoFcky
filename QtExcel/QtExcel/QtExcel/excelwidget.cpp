@@ -40,16 +40,15 @@ void ExcelWidget::on_openButton_clicked()
     //检查文件类型
     if(aFileName.right(4).contains("csv"))
     {
-        if(!file_csv(aFileName))
-            ui->textEdit->setText("打开文件失败");
+        file_csv(aFileName);
     }
     else if(aFileName.right(4).contains("xls"))
     {
-        if(!file_excel_xlsx(aFileName))
-            ui->textEdit->setText("打开文件失败");
+        file_excel_xlsx(aFileName);
     }
     else
     {
+        ui->textEdit->setText("只操作xlsx、csv文件");
         qDebug() << "只操作xlsx、csv文件";
     }
       return;
@@ -77,7 +76,10 @@ bool ExcelWidget::file_csv(const QString &path)
 
     }
     else
+    {
+        ui->textEdit->setText("打开文件失败");
         return false;
+    }
 
     QStringList str = data.at(1);
     QDateTime dateTime;
@@ -88,20 +90,32 @@ bool ExcelWidget::file_csv(const QString &path)
     //("2020/6/17 23:58:59", "001108", "0", "001108225", "40", "31.563", "123.170", "停止中", "追日表日期错误、定日表日期错误、追日预备表日期错误", "12", "5")
     //"2020/6/17 23:58:59" "001108225"
     qDebug() << data.at(1);
+    //qDebug() << str.at(0);
     //通过解析数据判断 为何种格式 保存文件格式为2020_6_17_1108225.csv
-    if((second = dateTime.fromString(str.at(0),"yyyy/MM/dd hh:mm:ss").toTime_t() )!= -1)
+    //dateTime = QDateTime::fromString(str.at(0),"yyyy/M/dd hh:mm:ss");
+    //qDebug() <<dateTime;
+    if((second = dateTime.fromString(str.at(1),"yyyy-MM-dd hh:mm:ss.zzz").toTime_t() )!= -1)
+    {
+        //数据库导出数据格式
+        TypeDate = 2;
+        savePath = QDir::currentPath() + "/" + dateTime.fromTime_t(second).toString("yyyy_MM_dd_") + str.at(4) + ".csv";
+        qDebug() << savePath;
+    }
+    else if((second = dateTime.fromString(str.at(0),"yyyy/MM/dd hh:mm:ss").toTime_t() )!= -1)
     {
         //PC断导出数据格式
         TypeDate = 1;
         savePath = QDir::currentPath() + "/" + dateTime.fromTime_t(second).toString("yyyy_MM_dd_") + str.at(3) + ".csv";
         qDebug() << savePath;
 
-    }else if((second = dateTime.fromString(str.at(1),"yyyy-MM-dd hh:mm:ss.zzz").toTime_t() )!= -1)
+    }
+    else if((second = dateTime.fromString(str.at(0),"yyyy/M/dd hh:mm:ss").toTime_t() )!= -1)
     {
-        //数据库导出数据格式
-        TypeDate = 2;
-        savePath = QDir::currentPath() + "/" + dateTime.fromTime_t(second).toString("yyyy_MM_dd_") + str.at(4) + ".csv";
+        //PC断导出数据格式
+        TypeDate = 1;
+        savePath = QDir::currentPath() + "/" + dateTime.fromTime_t(second).toString("yyyy_MM_dd_") + str.at(3) + ".csv";
         qDebug() << savePath;
+
     }else
     {
         ui->textEdit->setText("解析数据格式不对");
@@ -111,6 +125,7 @@ bool ExcelWidget::file_csv(const QString &path)
     QFile saveFile(savePath);
     if(!saveFile.open(QIODevice::ReadWrite))
     {
+        ui->textEdit->setText("打开保存文件失败");
         qDebug() << "打开保存文件失败";
         return false;
     }
@@ -133,6 +148,11 @@ bool ExcelWidget::file_csv(const QString &path)
         case 1://PC短导出的数据分析
             second1 = dateTime.fromString(s1.at(0),"yyyy/MM/dd hh:mm:ss").toTime_t();
             second2 = dateTime.fromString(s2.at(0),"yyyy/MM/dd hh:mm:ss").toTime_t();
+            if(second1 == -1)
+            {
+                second1 = dateTime.fromString(s1.at(0),"yyyy/M/dd hh:mm:ss").toTime_t();
+                second2 = dateTime.fromString(s2.at(0),"yyyy/M/dd hh:mm:ss").toTime_t();
+            }
             //qDebug() << "第" << i << "行" << s1.at(0) << "," << second1 << ",第" << i+1 << "行"<< s2.at(0) <<","<<second2;
             //qDebug() <<s1;
             diffValue = qAbs(second1-second2);
@@ -156,7 +176,7 @@ bool ExcelWidget::file_csv(const QString &path)
             //qDebug() << "第" << i << "行" << s1.at(1) << "," << second1 << ",第" << i+1 << "行"<< s2.at(1) <<","<<second2;
             //qDebug() <<s1;
             diffValue = qAbs(second1-second2);
-            qDebug() << ui->lineEdit->text().toUInt();
+            //qDebug() << ui->lineEdit->text().toUInt();
             if(diffValue >= ui->lineEdit->text().toInt()){
 
                 qDebug() << "第" << i << "行" << s1.at(1) << "," << second1 << ",第" << i+1 << "行"<< s2.at(1) <<","<<second2 <<" 马达控制器编码" <<s1.at(4);
@@ -240,6 +260,7 @@ bool ExcelWidget::file_excel_xlsx(const QString &path)
     QFile saveFile(savePath);
     if(!saveFile.open(QIODevice::ReadWrite))
     {
+        ui->textEdit->setText("打开保存文件失败");
         qDebug() << "打开保存文件失败";
         return false;
     }
